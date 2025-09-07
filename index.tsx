@@ -7,7 +7,18 @@ import React, { useState, useCallback, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { GoogleGenAI, Modality, Part } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Gracefully handle API key initialization.
+let ai: GoogleGenAI | null = null;
+let apiKeyError: string | null = null;
+
+try {
+    // This will throw an error if process.env.API_KEY is not available.
+    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+} catch (e) {
+    console.error("API Key is missing or invalid. The application will not be able to generate images. Please ensure the API_KEY environment variable is set correctly for your deployment environment.", e);
+    apiKeyError = "The AI Alchemist is not configured correctly. Please contact the administrator to resolve this issue.";
+}
+
 
 // --- Helper Functions ---
 const fileToGenerativePart = async (file: File): Promise<Part> => {
@@ -155,6 +166,10 @@ const App: React.FC = () => {
     // Identify Item Category when Hero Item is uploaded
     useEffect(() => {
         const identifyItemCategory = async (file: File) => {
+            if (!ai) {
+                setError(apiKeyError);
+                return;
+            }
             setIsIdentifying(true);
             setItemCategory(null);
             setShotType('model'); // Reset shot type on new item
@@ -187,6 +202,11 @@ const App: React.FC = () => {
 
 
     const handleGenerate = async () => {
+        if (!ai) {
+            setError(apiKeyError);
+            setIsLoading(false);
+            return;
+        }
         if (!heroItem) return;
 
         setIsLoading(true);
